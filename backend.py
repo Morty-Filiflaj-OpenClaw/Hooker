@@ -1,10 +1,14 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3
 import datetime
 
 app = FastAPI(title="Hooker API", description="Systematic Task Management for Hardware Engineers")
+
+# Serve frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- Database ---
 DB_FILE = "hooker.db"
@@ -28,7 +32,7 @@ init_db()
 # --- Models ---
 class TaskCreate(BaseModel):
     title: str
-    assignee: Optional[str] = None
+    assignee: Optional[str] = "Unassigned"
     priority: Optional[str] = "NORMAL"
 
 class TaskUpdate(BaseModel):
@@ -47,6 +51,10 @@ class Task(BaseModel):
     updated_at: str
 
 # --- Routes ---
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Hooker API. Visit /static/index.html for the board."}
+
 @app.post("/tasks", response_model=Task)
 def create_task(task: TaskCreate):
     conn = sqlite3.connect(DB_FILE)
