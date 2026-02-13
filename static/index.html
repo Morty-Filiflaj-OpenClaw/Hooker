@@ -117,8 +117,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_URL = "http://localhost:8000";
-        const COLUMNS = ["TODO", "DOING", "BLOCKED", "DONE"];
+        // Use relative path for API to support remote/container environments
+        const API_URL = ""; 
+        const COLUMNS = ["TODO", "IN_PROGRESS", "DONE"];
         let taskModal, compModal;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -133,9 +134,13 @@
         async function fetchTasks() {
             try {
                 const res = await fetch(`${API_URL}/tasks`);
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const tasks = await res.json();
                 renderBoard(tasks);
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error("Error fetching tasks:", e);
+                // alert("Failed to load tasks. Check console.");
+            }
         }
 
         function renderBoard(tasks) {
@@ -145,7 +150,14 @@
                 const colTasks = tasks.filter(t => t.status === status);
                 const col = document.createElement("div");
                 col.className = "board-column";
-                col.innerHTML = `<div class="column-header d-flex justify-content-between"><span>${status}</span><span class="badge bg-secondary rounded-pill">${colTasks.length}</span></div>`;
+                
+                // Friendly names for columns
+                let statusLabel = status;
+                if (status === 'IN_PROGRESS') statusLabel = 'In Progress';
+                if (status === 'TODO') statusLabel = 'To Do';
+                if (status === 'DONE') statusLabel = 'Done';
+
+                col.innerHTML = `<div class="column-header d-flex justify-content-between"><span>${statusLabel}</span><span class="badge bg-secondary rounded-pill">${colTasks.length}</span></div>`;
                 const list = document.createElement("div");
                 list.className = "task-list"; list.dataset.status = status;
                 
@@ -160,30 +172,63 @@
                 });
                 col.appendChild(list); board.appendChild(col);
                 new Sortable(list, { group: 'shared', animation: 150, onEnd: async (evt) => {
-                    if (evt.from !== evt.to) await fetch(`${API_URL}/tasks/${evt.item.dataset.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: evt.to.dataset.status}) });
-                    fetchTasks();
+                    if (evt.from !== evt.to) {
+                        try {
+                            const res = await fetch(`${API_URL}/tasks/${evt.item.dataset.id}`, { 
+                                method: 'PUT', 
+                                headers: {'Content-Type': 'application/json'}, 
+                                body: JSON.stringify({status: evt.to.dataset.status}) 
+                            });
+                            if (!res.ok) throw new Error("Failed to update status");
+                        } catch (e) {
+                            console.error(e);
+                            alert("Failed to move task.");
+                            fetchTasks(); // Revert UI
+                        }
+                    }
+                    // fetchTasks(); // Optional: refresh to sync order if needed
                 }});
             });
         }
 
         async function createTask() {
+            const title = document.getElementById("taskTitle").value;
+            if (!title) { alert("Title is required"); return; }
+
             const body = {
-                title: document.getElementById("taskTitle").value,
+                title: title,
                 description: document.getElementById("taskDesc").value,
                 assignee: document.getElementById("taskAssignee").value,
                 priority: document.getElementById("taskPriority").value,
                 tags: document.getElementById("taskTags").value.split(',').map(t=>t.trim()).filter(t=>t)
             };
-            await fetch(`${API_URL}/tasks`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-            taskModal.hide(); fetchTasks();
+            
+            try {
+                const res = await fetch(`${API_URL}/tasks`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Failed to create task");
+                }
+                taskModal.hide(); 
+                document.getElementById("taskTitle").value = ""; // Clear form
+                fetchTasks();
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
         }
 
-        async function deleteTask(id) { if(confirm("Delete task?")) { await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' }); fetchTasks(); }}
+        async function deleteTask(id) { 
+            if(confirm("Delete task?")) { 
+                await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' }); 
+                fetchTasks(); 
+            }
+        }
 
         // --- COMPONENTS ---
         async function fetchComponents() {
             try {
                 const res = await fetch(`${API_URL}/components`);
+                if (!res.ok) throw new Error("Failed to fetch components");
                 const comps = await res.json();
                 const tbody = document.getElementById("compTableBody");
                 tbody.innerHTML = "";
@@ -201,15 +246,29 @@
         }
 
         async function createComp() {
+            const part = document.getElementById("compPart").value;
+            if (!part) { alert("Part Number is required"); return; }
+
             const body = {
-                part_number: document.getElementById("compPart").value,
+                part_number: part,
                 description: document.getElementById("compDesc").value,
-                stock: parseInt(document.getElementById("compStock").value),
+                stock: parseInt(document.getElementById("compStock").value) || 0,
                 datasheet_url: document.getElementById("compData").value,
                 tags: document.getElementById("compTags").value.split(',').map(t=>t.trim()).filter(t=>t)
             };
-            await fetch(`${API_URL}/components`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-            compModal.hide(); fetchComponents();
+            
+            try {
+                const res = await fetch(`${API_URL}/components`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Failed to create component");
+                }
+                compModal.hide(); 
+                document.getElementById("compPart").value = ""; // Clear form
+                fetchComponents();
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
         }
 
         async function deleteComp(id) { if(confirm("Delete component?")) { await fetch(`${API_URL}/components/${id}`, { method: 'DELETE' }); fetchComponents(); }}

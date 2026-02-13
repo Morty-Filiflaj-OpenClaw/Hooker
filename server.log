@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/filiflaj/.openclaw/workspace/Hooker/run_app.py", line 1, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
