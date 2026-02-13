@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hooker Task Board</title>
+    <title>Hooker Task Board v2</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         body { background-color: #f4f5f7; font-family: 'Segoe UI', sans-serif; }
         .board-container { display: flex; overflow-x: auto; padding: 20px; height: 100vh; }
         .board-column { 
-            min-width: 300px; 
-            max-width: 300px; 
+            min-width: 320px; 
+            max-width: 320px; 
             background: #ebecf0; 
             border-radius: 5px; 
             margin-right: 15px; 
@@ -23,62 +23,103 @@
         .task-list { padding: 10px; flex-grow: 1; overflow-y: auto; min-height: 100px; }
         .task-card { 
             background: white; 
-            padding: 10px; 
-            border-radius: 3px; 
+            padding: 12px; 
+            border-radius: 4px; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-            margin-bottom: 8px; 
+            margin-bottom: 10px; 
             cursor: grab;
+            border-left: 4px solid transparent;
         }
         .task-card:hover { background: #f8f9fa; }
-        .badge-priority { float: right; font-size: 0.7em; }
+        .task-card.priority-URGENT { border-left-color: #dc3545; }
+        .task-card.priority-HIGH { border-left-color: #ffc107; }
+        .task-card.priority-NORMAL { border-left-color: #0dcaf0; }
+        
+        .badge-tag { margin-right: 3px; font-size: 0.65em; }
+        .delete-btn { float: right; cursor: pointer; color: #dc3545; opacity: 0; transition: opacity 0.2s; }
+        .task-card:hover .delete-btn { opacity: 1; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-3">
-        <a class="navbar-brand" href="#">🪝 Hooker</a>
-        <button class="btn btn-primary btn-sm" onclick="showAddTaskModal()">+ New Task</button>
+        <a class="navbar-brand" href="#">🪝 Hooker v2.0</a>
+        <div>
+            <button class="btn btn-outline-light btn-sm" onclick="fetchTasks()">🔄 Refresh</button>
+            <button class="btn btn-primary btn-sm ms-2" onclick="showAddTaskModal()">+ New Task</button>
+        </div>
     </nav>
 
     <div class="board-container" id="board">
-        <!-- Columns will be injected here -->
+        <!-- Columns injected via JS -->
     </div>
 
     <!-- Add Task Modal -->
-    <div class="modal" tabindex="-1" id="addTaskModal">
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">New Task</h5>
-                    <button type="button" class="btn-close" onclick="closeModal()"></button>
+                    <button type="button" class="btn-close" onclick="closeModal('addTaskModal')"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="text" id="taskTitle" class="form-control mb-2" placeholder="Task Title">
-                    <select id="taskAssignee" class="form-select mb-2">
-                        <option value="Morty">Morty</option>
-                        <option value="Filip">Filip</option>
-                    </select>
-                    <select id="taskPriority" class="form-select">
-                        <option value="NORMAL">Normal</option>
-                        <option value="HIGH">High</option>
-                        <option value="URGENT">Urgent</option>
-                    </select>
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" id="taskTitle" class="form-control" placeholder="What needs to be done?">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="taskDesc" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Assignee</label>
+                            <select id="taskAssignee" class="form-select">
+                                <option value="Morty">Morty</option>
+                                <option value="Filip">Filip</option>
+                                <option value="Unassigned">Unassigned</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Priority</label>
+                            <select id="taskPriority" class="form-select">
+                                <option value="NORMAL">Normal</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tags (comma separated)</label>
+                        <input type="text" id="taskTags" class="form-control" placeholder="hw, fw, bug...">
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="createTask()">Save</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addTaskModal')">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="createTask()">Save Task</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = "http://localhost:8000";
         const COLUMNS = ["TODO", "DOING", "BLOCKED", "DONE"];
+        let taskModal;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            taskModal = new bootstrap.Modal(document.getElementById('addTaskModal'));
+            fetchTasks();
+        });
 
         async function fetchTasks() {
-            const res = await fetch(`${API_URL}/tasks`);
-            const tasks = await res.json();
-            renderBoard(tasks);
+            try {
+                const res = await fetch(`${API_URL}/tasks`);
+                const tasks = await res.json();
+                renderBoard(tasks);
+            } catch (e) {
+                console.error("Failed to fetch tasks", e);
+            }
         }
 
         function renderBoard(tasks) {
@@ -86,24 +127,38 @@
             board.innerHTML = "";
 
             COLUMNS.forEach(status => {
+                const colTasks = tasks.filter(t => t.status === status);
+                
                 const col = document.createElement("div");
                 col.className = "board-column";
-                col.innerHTML = `<div class="column-header">${status} <span class="badge bg-secondary">${tasks.filter(t => t.status === status).length}</span></div>`;
+                col.innerHTML = `
+                    <div class="column-header d-flex justify-content-between align-items-center">
+                        <span>${status}</span>
+                        <span class="badge bg-secondary rounded-pill">${colTasks.length}</span>
+                    </div>
+                `;
                 
                 const list = document.createElement("div");
                 list.className = "task-list";
                 list.id = `col-${status}`;
                 list.dataset.status = status;
 
-                tasks.filter(t => t.status === status).forEach(t => {
+                colTasks.forEach(t => {
                     const card = document.createElement("div");
-                    card.className = "task-card";
+                    card.className = `task-card priority-${t.priority}`;
                     card.dataset.id = t.id;
+                    
+                    const tagsHtml = t.tags ? t.tags.map(tag => `<span class="badge bg-secondary badge-tag">${tag}</span>`).join('') : '';
+                    
                     card.innerHTML = `
-                        <div>${t.title}</div>
-                        <div class="text-muted small mt-1">
-                            👤 ${t.assignee || 'Unassigned'} 
-                            <span class="badge bg-${getPriorityColor(t.priority)} badge-priority">${t.priority}</span>
+                        <div class="d-flex justify-content-between">
+                            <strong>${t.title}</strong>
+                            <span class="delete-btn" onclick="deleteTask(${t.id})">&times;</span>
+                        </div>
+                        <div class="text-muted small mt-1" style="white-space: pre-wrap;">${t.description || ''}</div>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <small>👤 ${t.assignee || 'Unassigned'}</small>
+                            <div>${tagsHtml}</div>
                         </div>
                     `;
                     list.appendChild(card);
@@ -115,19 +170,16 @@
                 new Sortable(list, {
                     group: 'shared',
                     animation: 150,
+                    ghostClass: 'bg-light',
                     onEnd: async (evt) => {
                         const taskId = evt.item.dataset.id;
                         const newStatus = evt.to.dataset.status;
-                        await updateTaskStatus(taskId, newStatus);
+                        if (evt.from !== evt.to) {
+                            await updateTaskStatus(taskId, newStatus);
+                        }
                     }
                 });
             });
-        }
-
-        function getPriorityColor(p) {
-            if(p === 'URGENT') return 'danger';
-            if(p === 'HIGH') return 'warning';
-            return 'info';
         }
 
         async function updateTaskStatus(id, status) {
@@ -136,29 +188,56 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({status: status})
             });
+            // Update UI count immediately or fetchTasks()
+            fetchTasks(); 
         }
 
         async function createTask() {
             const title = document.getElementById("taskTitle").value;
+            const desc = document.getElementById("taskDesc").value;
             const assignee = document.getElementById("taskAssignee").value;
             const priority = document.getElementById("taskPriority").value;
+            const tagsInput = document.getElementById("taskTags").value;
+            
+            const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
 
             if(!title) return;
 
             await fetch(`${API_URL}/tasks`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({title, assignee, priority})
+                body: JSON.stringify({
+                    title: title,
+                    description: desc,
+                    assignee: assignee,
+                    priority: priority,
+                    tags: tags
+                })
             });
             
-            closeModal();
+            taskModal.hide();
+            // Clear form
+            document.getElementById("taskTitle").value = "";
+            document.getElementById("taskDesc").value = "";
+            document.getElementById("taskTags").value = "";
+            
             fetchTasks();
         }
 
-        function showAddTaskModal() { document.getElementById("addTaskModal").style.display = "block"; }
-        function closeModal() { document.getElementById("addTaskModal").style.display = "none"; }
+        async function deleteTask(id) {
+            if(confirm("Are you sure you want to delete this task?")) {
+                await fetch(`${API_URL}/tasks/${id}`, {
+                    method: 'DELETE'
+                });
+                fetchTasks();
+            }
+        }
 
-        fetchTasks();
+        function showAddTaskModal() { taskModal.show(); }
+        function closeModal(id) { 
+            const m = bootstrap.Modal.getInstance(document.getElementById(id));
+            m.hide();
+        }
     </script>
 </body>
 </html>
