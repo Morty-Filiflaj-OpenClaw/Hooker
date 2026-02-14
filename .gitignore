@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.db-journal
+.DS_Store
+.vscode/
+.idea/
+
+# Offline data cache
+hooker_cache_*
+hooker_offline_queue
+hooker_templates
+hooker_webhook_url
+hooker_api_key
+darkMode

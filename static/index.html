@@ -7,8 +7,33 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        body { background-color: #f4f5f7; font-family: 'Segoe UI', sans-serif; }
-        .board-container { display: flex; overflow-x: auto; padding: 20px; height: calc(100vh - 120px); }
+        body { 
+            background-color: #f4f5f7; 
+            font-family: 'Segoe UI', sans-serif; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode { background-color: #1e1e1e; color: #e0e0e0; }
+        body.dark-mode .navbar { background-color: #2d2d2d !important; }
+        body.dark-mode .board-column { background: #2d2d2d; }
+        body.dark-mode .column-header { background: #3d3d3d; }
+        body.dark-mode .task-card { background: #383838; color: #e0e0e0; }
+        body.dark-mode .task-card:hover { background: #424242; }
+        body.dark-mode .comp-table-container { background: #2d2d2d; color: #e0e0e0; }
+        body.dark-mode .table { color: #e0e0e0; }
+        body.dark-mode .modal-content { background: #2d2d2d; color: #e0e0e0; }
+        body.dark-mode .form-control, body.dark-mode .form-select { background: #3d3d3d; color: #e0e0e0; border-color: #4d4d4d; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #3d3d3d; }
+        
+        .board-container { 
+            display: flex; 
+            overflow-x: auto; 
+            padding: 20px; 
+            height: calc(100vh - 180px); 
+            margin-left: 0;
+            transition: margin-left 0.3s;
+        }
+        .board-container.with-sidebar { margin-left: 280px; }
+        
         .board-column { 
             min-width: 320px; max-width: 320px; background: #ebecf0; 
             border-radius: 5px; margin-right: 15px; display: flex; flex-direction: column; max-height: 100%;
@@ -17,23 +42,62 @@
         .task-list { padding: 10px; flex-grow: 1; overflow-y: auto; min-height: 100px; }
         .task-card { 
             background: white; padding: 12px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-            margin-bottom: 10px; cursor: grab; border-left: 4px solid transparent;
+            margin-bottom: 10px; cursor: grab; border-left: 4px solid transparent; position: relative;
         }
         .task-card:hover { background: #f8f9fa; }
         .task-card.priority-URGENT { border-left-color: #dc3545; }
         .task-card.priority-HIGH { border-left-color: #ffc107; }
         .task-card.priority-NORMAL { border-left-color: #0dcaf0; }
+        .task-card.due-warning { border: 2px solid #ffc107; background: #fff3cd; }
+        .task-card.due-overdue { border: 2px solid #dc3545; background: #f8d7da; }
         .badge-tag { margin-right: 3px; font-size: 0.65em; }
-        .delete-btn { float: right; cursor: pointer; color: #dc3545; opacity: 0; transition: opacity 0.2s; }
+        .delete-btn { 
+            position: absolute; top: 8px; right: 8px; cursor: pointer; 
+            color: #dc3545; opacity: 0; transition: opacity 0.2s; 
+        }
         .task-card:hover .delete-btn { opacity: 1; }
-        
-        /* Components Table */
+        .due-date { font-size: 0.75em; color: #6c757d; margin-top: 5px; }
         .comp-table-container { padding: 20px; background: white; border-radius: 5px; margin: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 56px;
+            width: 280px;
+            height: calc(100vh - 56px);
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s;
+        }
+        .sidebar.show { transform: translateX(0); }
+        
+        /* Search & Filters */
+        .filters-container { padding: 10px 20px; background: white; border-bottom: 1px solid #ddd; }
+        body.dark-mode .filters-container { background: #2d2d2d; border-bottom: 1px solid #3d3d3d; }
+        
+        /* Inline editing */
+        .task-card.editing { border: 2px solid #0d6efd; }
+        .task-card .edit-input { width: 100%; margin-bottom: 5px; }
+        
+        /* Offline indicator */
+        .offline-indicator { 
+            position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; 
+            background: #dc3545; color: white; border-radius: 5px; display: none; 
+        }
+        .offline-indicator.show { display: block; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-3">
-        <a class="navbar-brand" href="#">🪝 Hooker v2.2</a>
+        <div class="d-flex align-items-center">
+            <button class="btn btn-outline-light btn-sm me-2" onclick="toggleSidebar()">☰</button>
+            <a class="navbar-brand" href="#">🪝 Hooker v2.3</a>
+        </div>
         <div class="d-flex align-items-center">
             <ul class="nav nav-pills me-3" id="mainTab" role="tablist">
                 <li class="nav-item">
@@ -43,16 +107,67 @@
                     <button class="nav-link" id="components-tab" data-bs-toggle="tab" data-bs-target="#components-pane" type="button">Components</button>
                 </li>
             </ul>
-            <button class="btn btn-outline-light btn-sm" onclick="refresh()">🔄 Refresh</button>
+            <button class="btn btn-outline-light btn-sm me-2" onclick="toggleDarkMode()">🌙</button>
+            <button class="btn btn-outline-light btn-sm" onclick="refresh()">🔄</button>
         </div>
     </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <h5>Navigation</h5>
+        <div class="mb-3">
+            <button class="btn btn-sm btn-primary w-100 mb-2" onclick="showTaskModal()">+ New Task</button>
+            <button class="btn btn-sm btn-success w-100 mb-2" onclick="exportTasks('json')">📥 Export JSON</button>
+            <button class="btn btn-sm btn-success w-100" onclick="exportTasks('csv')">📥 Export CSV</button>
+        </div>
+        
+        <h6 class="mt-4">Quick Filters</h6>
+        <div class="list-group list-group-flush">
+            <a href="#" class="list-group-item list-group-item-action" onclick="quickFilter('all')">All Tasks</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="quickFilter('overdue')">Overdue</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="quickFilter('today')">Due Today</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="quickFilter('week')">This Week</a>
+        </div>
+        
+        <h6 class="mt-4">Statistics</h6>
+        <div id="stats">
+            <small>Total: <span id="statTotal">0</span></small><br>
+            <small>TODO: <span id="statTodo">0</span></small><br>
+            <small>In Progress: <span id="statProgress">0</span></small><br>
+            <small>Done: <span id="statDone">0</span></small>
+        </div>
+        
+        <h6 class="mt-4">Templates</h6>
+        <div id="templates-list" class="list-group list-group-flush"></div>
+        <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="showTemplateModal()">+ Template</button>
+    </div>
 
     <div class="tab-content" id="mainTabContent">
         <!-- TASKS PANE -->
         <div class="tab-pane fade show active" id="tasks-pane">
-            <div class="d-flex justify-content-end px-4 py-2">
-                <button class="btn btn-primary btn-sm" onclick="showTaskModal()">+ New Task</button>
+            <!-- Search & Filters -->
+            <div class="filters-container d-flex gap-2">
+                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="🔍 Search tasks..." onkeyup="applyFilters()">
+                <select id="filterStatus" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="TODO">TODO</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="DONE">Done</option>
+                </select>
+                <select id="filterPriority" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">All Priority</option>
+                    <option value="URGENT">Urgent</option>
+                    <option value="HIGH">High</option>
+                    <option value="NORMAL">Normal</option>
+                </select>
+                <select id="filterAssignee" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">All Assignees</option>
+                    <option value="Morty">Morty</option>
+                    <option value="Filip">Filip</option>
+                </select>
+                <input type="text" id="filterTags" class="form-control form-control-sm" placeholder="Filter by tag" onkeyup="applyFilters()">
             </div>
+            
             <div class="board-container" id="board"></div>
         </div>
 
@@ -83,17 +198,69 @@
     <div class="modal fade" id="addTaskModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">New Task</h5><button class="btn-close" onclick="closeModal('addTaskModal')"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">New Task</h5>
+                    <button class="btn-close" onclick="closeModal('addTaskModal')"></button>
+                </div>
                 <div class="modal-body">
                     <input type="text" id="taskTitle" class="form-control mb-2" placeholder="Title">
                     <textarea id="taskDesc" class="form-control mb-2" placeholder="Description"></textarea>
                     <div class="row mb-2">
-                        <div class="col"><select id="taskAssignee" class="form-select"><option>Morty</option><option>Filip</option></select></div>
-                        <div class="col"><select id="taskPriority" class="form-select"><option>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
+                        <div class="col">
+                            <select id="taskAssignee" class="form-select">
+                                <option>Morty</option>
+                                <option>Filip</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <select id="taskPriority" class="form-select">
+                                <option>NORMAL</option>
+                                <option>HIGH</option>
+                                <option>URGENT</option>
+                            </select>
+                        </div>
                     </div>
-                    <input type="text" id="taskTags" class="form-control" placeholder="Tags (comma sep)">
+                    <input type="date" id="taskDueDate" class="form-control mb-2" placeholder="Due Date">
+                    <input type="text" id="taskTags" class="form-control mb-2" placeholder="Tags (comma sep)">
+                    <div class="form-check">
+                        <input type="checkbox" id="taskRecurring" class="form-check-input">
+                        <label class="form-check-label" for="taskRecurring">Recurring task</label>
+                    </div>
+                    <select id="taskRecurrence" class="form-select mt-2" style="display: none;">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
                 </div>
-                <div class="modal-footer"><button class="btn btn-primary" onclick="createTask()">Save</button></div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="createTask()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Template Modal -->
+    <div class="modal fade" id="addTemplateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Template</h5>
+                    <button class="btn-close" onclick="closeModal('addTemplateModal')"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="templateName" class="form-control mb-2" placeholder="Template Name">
+                    <input type="text" id="templateTitle" class="form-control mb-2" placeholder="Task Title">
+                    <textarea id="templateDesc" class="form-control mb-2" placeholder="Description"></textarea>
+                    <select id="templatePriority" class="form-select mb-2">
+                        <option>NORMAL</option>
+                        <option>HIGH</option>
+                        <option>URGENT</option>
+                    </select>
+                    <input type="text" id="templateTags" class="form-control" placeholder="Tags (comma sep)">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" onclick="createTemplate()">Save Template</button>
+                </div>
             </div>
         </div>
     </div>
@@ -102,7 +269,10 @@
     <div class="modal fade" id="addCompModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Add Component</h5><button class="btn-close" onclick="closeModal('addCompModal')"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Component</h5>
+                    <button class="btn-close" onclick="closeModal('addCompModal')"></button>
+                </div>
                 <div class="modal-body">
                     <input type="text" id="compPart" class="form-control mb-2" placeholder="Part Number (e.g. ESP32-S3)">
                     <input type="text" id="compDesc" class="form-control mb-2" placeholder="Description">
@@ -110,48 +280,224 @@
                     <input type="text" id="compData" class="form-control mb-2" placeholder="Datasheet URL">
                     <input type="text" id="compTags" class="form-control" placeholder="Tags (comma sep)">
                 </div>
-                <div class="modal-footer"><button class="btn btn-success" onclick="createComp()">Add to Inventory</button></div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" onclick="createComp()">Add to Inventory</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Webhook Config Modal -->
+    <div class="modal fade" id="webhookModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Webhook Configuration</h5>
+                    <button class="btn-close" onclick="closeModal('webhookModal')"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="url" id="webhookUrl" class="form-control" placeholder="Webhook URL">
+                    <small class="text-muted">Notifications will be sent to this URL on task changes</small>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="saveWebhook()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="offline-indicator" id="offlineIndicator">⚠️ Offline Mode</div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Use relative path for API to support remote/container environments
         const API_URL = ""; 
         const COLUMNS = ["TODO", "IN_PROGRESS", "DONE"];
-        let taskModal, compModal;
+        let taskModal, compModal, templateModal, webhookModal;
+        let allTasks = [];
+        let apiKey = localStorage.getItem('hooker_api_key') || '';
 
         document.addEventListener('DOMContentLoaded', () => {
             taskModal = new bootstrap.Modal(document.getElementById('addTaskModal'));
             compModal = new bootstrap.Modal(document.getElementById('addCompModal'));
+            templateModal = new bootstrap.Modal(document.getElementById('addTemplateModal'));
+            webhookModal = new bootstrap.Modal(document.getElementById('webhookModal'));
+            
+            // Load dark mode preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Show recurring options
+            document.getElementById('taskRecurring').addEventListener('change', (e) => {
+                document.getElementById('taskRecurrence').style.display = e.target.checked ? 'block' : 'none';
+            });
+            
+            // Check API key
+            if (!apiKey) {
+                apiKey = prompt("Enter API key (or leave empty):") || '';
+                localStorage.setItem('hooker_api_key', apiKey);
+            }
+            
             refresh();
+            loadTemplates();
+            
+            // Offline detection
+            window.addEventListener('online', () => {
+                document.getElementById('offlineIndicator').classList.remove('show');
+                syncOfflineData();
+            });
+            window.addEventListener('offline', () => {
+                document.getElementById('offlineIndicator').classList.add('show');
+            });
         });
 
+        function getHeaders() {
+            const headers = {'Content-Type': 'application/json'};
+            if (apiKey) headers['X-API-Key'] = apiKey;
+            return headers;
+        }
+
         function refresh() { fetchTasks(); fetchComponents(); }
+
+        // --- OFFLINE SUPPORT ---
+        function cacheData(key, data) {
+            try {
+                localStorage.setItem(`hooker_cache_${key}`, JSON.stringify(data));
+            } catch (e) { console.error("Cache error:", e); }
+        }
+
+        function getCachedData(key) {
+            try {
+                const data = localStorage.getItem(`hooker_cache_${key}`);
+                return data ? JSON.parse(data) : null;
+            } catch (e) { return null; }
+        }
+
+        function saveOfflineAction(action) {
+            const queue = JSON.parse(localStorage.getItem('hooker_offline_queue') || '[]');
+            queue.push(action);
+            localStorage.setItem('hooker_offline_queue', JSON.stringify(queue));
+        }
+
+        async function syncOfflineData() {
+            const queue = JSON.parse(localStorage.getItem('hooker_offline_queue') || '[]');
+            for (const action of queue) {
+                try {
+                    await fetch(action.url, {
+                        method: action.method,
+                        headers: getHeaders(),
+                        body: action.body
+                    });
+                } catch (e) { console.error("Sync failed:", e); }
+            }
+            localStorage.removeItem('hooker_offline_queue');
+            refresh();
+        }
 
         // --- TASKS ---
         async function fetchTasks() {
             try {
-                const res = await fetch(`${API_URL}/tasks`);
+                const res = await fetch(`${API_URL}/tasks`, { headers: getHeaders() });
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                const tasks = await res.json();
-                renderBoard(tasks);
+                allTasks = await res.json();
+                cacheData('tasks', allTasks);
+                applyFilters();
             } catch (e) { 
                 console.error("Error fetching tasks:", e);
-                // alert("Failed to load tasks. Check console.");
+                const cached = getCachedData('tasks');
+                if (cached) {
+                    allTasks = cached;
+                    applyFilters();
+                }
             }
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            const priority = document.getElementById('filterPriority').value;
+            const assignee = document.getElementById('filterAssignee').value;
+            const tag = document.getElementById('filterTags').value.toLowerCase();
+
+            let filtered = allTasks.filter(t => {
+                if (status && t.status !== status) return false;
+                if (priority && t.priority !== priority) return false;
+                if (assignee && t.assignee !== assignee) return false;
+                if (search && !t.title.toLowerCase().includes(search) && !t.description.toLowerCase().includes(search)) return false;
+                if (tag && !t.tags.some(tg => tg.toLowerCase().includes(tag))) return false;
+                return true;
+            });
+
+            renderBoard(filtered);
+            updateStats();
+        }
+
+        function quickFilter(type) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
+            let filtered = allTasks;
+            
+            if (type === 'overdue') {
+                filtered = allTasks.filter(t => {
+                    if (!t.due_date) return false;
+                    const due = new Date(t.due_date);
+                    return due < now && t.status !== 'DONE';
+                });
+            } else if (type === 'today') {
+                filtered = allTasks.filter(t => {
+                    if (!t.due_date) return false;
+                    const due = new Date(t.due_date);
+                    return due.toDateString() === now.toDateString();
+                });
+            } else if (type === 'week') {
+                const weekEnd = new Date(now);
+                weekEnd.setDate(now.getDate() + 7);
+                filtered = allTasks.filter(t => {
+                    if (!t.due_date) return false;
+                    const due = new Date(t.due_date);
+                    return due >= now && due <= weekEnd;
+                });
+            }
+            
+            renderBoard(filtered);
+        }
+
+        function getDueStatus(dueDate) {
+            if (!dueDate) return '';
+            const due = new Date(dueDate);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const daysDiff = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff < 0) return 'due-overdue';
+            if (daysDiff <= 2) return 'due-warning';
+            return '';
+        }
+
+        function formatDueDate(dueDate) {
+            if (!dueDate) return '';
+            const due = new Date(dueDate);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const daysDiff = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff < 0) return `⚠️ Overdue ${Math.abs(daysDiff)}d`;
+            if (daysDiff === 0) return '⚠️ Due Today';
+            if (daysDiff === 1) return '⚠️ Due Tomorrow';
+            if (daysDiff <= 7) return `📅 ${daysDiff}d left`;
+            return `📅 ${dueDate}`;
         }
 
         function renderBoard(tasks) {
             const board = document.getElementById("board");
             board.innerHTML = "";
+            
             COLUMNS.forEach(status => {
                 const colTasks = tasks.filter(t => t.status === status);
                 const col = document.createElement("div");
                 col.className = "board-column";
                 
-                // Friendly names for columns
                 let statusLabel = status;
                 if (status === 'IN_PROGRESS') statusLabel = 'In Progress';
                 if (status === 'TODO') statusLabel = 'To Do';
@@ -159,36 +505,113 @@
 
                 col.innerHTML = `<div class="column-header d-flex justify-content-between"><span>${statusLabel}</span><span class="badge bg-secondary rounded-pill">${colTasks.length}</span></div>`;
                 const list = document.createElement("div");
-                list.className = "task-list"; list.dataset.status = status;
+                list.className = "task-list"; 
+                list.dataset.status = status;
                 
                 colTasks.forEach(t => {
                     const card = document.createElement("div");
-                    card.className = `task-card priority-${t.priority}`; card.dataset.id = t.id;
+                    const dueStatus = getDueStatus(t.due_date);
+                    card.className = `task-card priority-${t.priority} ${dueStatus}`;
+                    card.dataset.id = t.id;
+                    
                     const tags = t.tags ? t.tags.map(tag => `<span class="badge bg-secondary badge-tag">${tag}</span>`).join('') : '';
-                    card.innerHTML = `<div class="d-flex justify-content-between"><strong>${t.title}</strong><span class="delete-btn" onclick="deleteTask(${t.id})">&times;</span></div>
-                                      <small class="text-muted">${t.description || ''}</small>
-                                      <div class="mt-2 d-flex justify-content-between"><small>👤 ${t.assignee}</small><div>${tags}</div></div>`;
+                    const dueText = t.due_date ? `<div class="due-date">${formatDueDate(t.due_date)}</div>` : '';
+                    
+                    card.innerHTML = `
+                        <span class="delete-btn" onclick="deleteTask(${t.id})">&times;</span>
+                        <strong>${t.title}</strong>
+                        <small class="text-muted d-block">${t.description || ''}</small>
+                        ${dueText}
+                        <div class="mt-2 d-flex justify-content-between">
+                            <small>👤 ${t.assignee}</small>
+                            <div>${tags}</div>
+                        </div>
+                    `;
+                    
+                    // Double-click for inline editing
+                    card.addEventListener('dblclick', () => enableInlineEdit(card, t));
+                    
                     list.appendChild(card);
                 });
-                col.appendChild(list); board.appendChild(col);
-                new Sortable(list, { group: 'shared', animation: 150, onEnd: async (evt) => {
-                    if (evt.from !== evt.to) {
-                        try {
-                            const res = await fetch(`${API_URL}/tasks/${evt.item.dataset.id}`, { 
-                                method: 'PUT', 
-                                headers: {'Content-Type': 'application/json'}, 
-                                body: JSON.stringify({status: evt.to.dataset.status}) 
-                            });
-                            if (!res.ok) throw new Error("Failed to update status");
-                        } catch (e) {
-                            console.error(e);
-                            alert("Failed to move task.");
-                            fetchTasks(); // Revert UI
+                
+                col.appendChild(list); 
+                board.appendChild(col);
+                
+                new Sortable(list, { 
+                    group: 'shared', 
+                    animation: 150, 
+                    onEnd: async (evt) => {
+                        if (evt.from !== evt.to) {
+                            try {
+                                const res = await fetch(`${API_URL}/tasks/${evt.item.dataset.id}`, { 
+                                    method: 'PUT', 
+                                    headers: getHeaders(), 
+                                    body: JSON.stringify({status: evt.to.dataset.status}) 
+                                });
+                                if (!res.ok) throw new Error("Failed to update status");
+                                sendWebhook('task_moved', evt.item.dataset.id);
+                            } catch (e) {
+                                console.error(e);
+                                if (!navigator.onLine) {
+                                    saveOfflineAction({
+                                        url: `${API_URL}/tasks/${evt.item.dataset.id}`,
+                                        method: 'PUT',
+                                        body: JSON.stringify({status: evt.to.dataset.status})
+                                    });
+                                } else {
+                                    alert("Failed to move task.");
+                                    fetchTasks();
+                                }
+                            }
                         }
                     }
-                    // fetchTasks(); // Optional: refresh to sync order if needed
-                }});
+                });
             });
+        }
+
+        function enableInlineEdit(card, task) {
+            card.classList.add('editing');
+            const titleInput = document.createElement('input');
+            titleInput.className = 'form-control form-control-sm edit-input';
+            titleInput.value = task.title;
+            
+            const descInput = document.createElement('textarea');
+            descInput.className = 'form-control form-control-sm edit-input';
+            descInput.value = task.description || '';
+            descInput.rows = 2;
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-sm btn-primary me-1';
+            saveBtn.textContent = 'Save';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-sm btn-secondary';
+            cancelBtn.textContent = 'Cancel';
+            
+            card.innerHTML = '';
+            card.appendChild(titleInput);
+            card.appendChild(descInput);
+            card.appendChild(saveBtn);
+            card.appendChild(cancelBtn);
+            
+            saveBtn.onclick = async () => {
+                try {
+                    await fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            title: titleInput.value,
+                            description: descInput.value
+                        })
+                    });
+                    fetchTasks();
+                    sendWebhook('task_edited', task.id);
+                } catch (e) {
+                    alert('Failed to save');
+                }
+            };
+            
+            cancelBtn.onclick = () => fetchTasks();
         }
 
         async function createTask() {
@@ -200,34 +623,192 @@
                 description: document.getElementById("taskDesc").value,
                 assignee: document.getElementById("taskAssignee").value,
                 priority: document.getElementById("taskPriority").value,
-                tags: document.getElementById("taskTags").value.split(',').map(t=>t.trim()).filter(t=>t)
+                due_date: document.getElementById("taskDueDate").value || null,
+                tags: document.getElementById("taskTags").value.split(',').map(t=>t.trim()).filter(t=>t),
+                recurring: document.getElementById("taskRecurring").checked,
+                recurrence: document.getElementById("taskRecurring").checked ? 
+                    document.getElementById("taskRecurrence").value : null
             };
             
             try {
-                const res = await fetch(`${API_URL}/tasks`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                const res = await fetch(`${API_URL}/tasks`, { 
+                    method: 'POST', 
+                    headers: getHeaders(), 
+                    body: JSON.stringify(body) 
+                });
                 if (!res.ok) {
                     const err = await res.json();
                     throw new Error(err.detail || "Failed to create task");
                 }
+                const newTask = await res.json();
                 taskModal.hide(); 
-                document.getElementById("taskTitle").value = ""; // Clear form
+                clearTaskForm();
                 fetchTasks();
+                sendWebhook('task_created', newTask.id);
             } catch (e) {
-                alert(`Error: ${e.message}`);
+                if (!navigator.onLine) {
+                    saveOfflineAction({
+                        url: `${API_URL}/tasks`,
+                        method: 'POST',
+                        body: JSON.stringify(body)
+                    });
+                    alert("Saved offline. Will sync when online.");
+                    taskModal.hide();
+                } else {
+                    alert(`Error: ${e.message}`);
+                }
             }
+        }
+
+        function clearTaskForm() {
+            document.getElementById("taskTitle").value = "";
+            document.getElementById("taskDesc").value = "";
+            document.getElementById("taskDueDate").value = "";
+            document.getElementById("taskTags").value = "";
+            document.getElementById("taskRecurring").checked = false;
+            document.getElementById("taskRecurrence").style.display = 'none';
         }
 
         async function deleteTask(id) { 
             if(confirm("Delete task?")) { 
-                await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' }); 
+                await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE', headers: getHeaders() }); 
                 fetchTasks(); 
+                sendWebhook('task_deleted', id);
             }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').textContent = allTasks.length;
+            document.getElementById('statTodo').textContent = allTasks.filter(t => t.status === 'TODO').length;
+            document.getElementById('statProgress').textContent = allTasks.filter(t => t.status === 'IN_PROGRESS').length;
+            document.getElementById('statDone').textContent = allTasks.filter(t => t.status === 'DONE').length;
+        }
+
+        // --- TEMPLATES ---
+        function loadTemplates() {
+            const templates = JSON.parse(localStorage.getItem('hooker_templates') || '[]');
+            const list = document.getElementById('templates-list');
+            list.innerHTML = '';
+            templates.forEach((t, i) => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action d-flex justify-content-between';
+                item.innerHTML = `${t.name} <span onclick="deleteTemplate(${i})" style="color: red;">&times;</span>`;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    applyTemplate(t);
+                };
+                list.appendChild(item);
+            });
+        }
+
+        function showTemplateModal() {
+            templateModal.show();
+        }
+
+        function createTemplate() {
+            const name = document.getElementById('templateName').value;
+            if (!name) { alert("Template name required"); return; }
+            
+            const template = {
+                name: name,
+                title: document.getElementById('templateTitle').value,
+                description: document.getElementById('templateDesc').value,
+                priority: document.getElementById('templatePriority').value,
+                tags: document.getElementById('templateTags').value.split(',').map(t=>t.trim()).filter(t=>t)
+            };
+            
+            const templates = JSON.parse(localStorage.getItem('hooker_templates') || '[]');
+            templates.push(template);
+            localStorage.setItem('hooker_templates', JSON.stringify(templates));
+            
+            templateModal.hide();
+            loadTemplates();
+            
+            // Clear form
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateTitle').value = '';
+            document.getElementById('templateDesc').value = '';
+            document.getElementById('templateTags').value = '';
+        }
+
+        function applyTemplate(template) {
+            document.getElementById('taskTitle').value = template.title;
+            document.getElementById('taskDesc').value = template.description;
+            document.getElementById('taskPriority').value = template.priority;
+            document.getElementById('taskTags').value = template.tags.join(', ');
+            taskModal.show();
+        }
+
+        function deleteTemplate(index) {
+            if (confirm("Delete template?")) {
+                const templates = JSON.parse(localStorage.getItem('hooker_templates') || '[]');
+                templates.splice(index, 1);
+                localStorage.setItem('hooker_templates', JSON.stringify(templates));
+                loadTemplates();
+            }
+        }
+
+        // --- WEBHOOKS ---
+        async function sendWebhook(event, taskId) {
+            const webhookUrl = localStorage.getItem('hooker_webhook_url');
+            if (!webhookUrl) return;
+            
+            try {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        event: event,
+                        task_id: taskId,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+            } catch (e) {
+                console.error("Webhook failed:", e);
+            }
+        }
+
+        function showWebhookModal() {
+            webhookModal.show();
+            document.getElementById('webhookUrl').value = localStorage.getItem('hooker_webhook_url') || '';
+        }
+
+        function saveWebhook() {
+            const url = document.getElementById('webhookUrl').value;
+            localStorage.setItem('hooker_webhook_url', url);
+            webhookModal.hide();
+            alert('Webhook saved!');
+        }
+
+        // --- EXPORT ---
+        function exportTasks(format) {
+            if (format === 'json') {
+                const json = JSON.stringify(allTasks, null, 2);
+                downloadFile('tasks.json', json, 'application/json');
+            } else if (format === 'csv') {
+                let csv = 'ID,Title,Description,Status,Assignee,Priority,Due Date,Tags\n';
+                allTasks.forEach(t => {
+                    csv += `${t.id},"${t.title}","${t.description || ''}",${t.status},${t.assignee},${t.priority},${t.due_date || ''},"${t.tags.join(';')}"\n`;
+                });
+                downloadFile('tasks.csv', csv, 'text/csv');
+            }
+        }
+
+        function downloadFile(filename, content, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         // --- COMPONENTS ---
         async function fetchComponents() {
             try {
-                const res = await fetch(`${API_URL}/components`);
+                const res = await fetch(`${API_URL}/components`, { headers: getHeaders() });
                 if (!res.ok) throw new Error("Failed to fetch components");
                 const comps = await res.json();
                 const tbody = document.getElementById("compTableBody");
@@ -258,24 +839,46 @@
             };
             
             try {
-                const res = await fetch(`${API_URL}/components`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                const res = await fetch(`${API_URL}/components`, { 
+                    method: 'POST', 
+                    headers: getHeaders(), 
+                    body: JSON.stringify(body) 
+                });
                 if (!res.ok) {
                     const err = await res.json();
                     throw new Error(err.detail || "Failed to create component");
                 }
                 compModal.hide(); 
-                document.getElementById("compPart").value = ""; // Clear form
+                document.getElementById("compPart").value = "";
                 fetchComponents();
             } catch (e) {
                 alert(`Error: ${e.message}`);
             }
         }
 
-        async function deleteComp(id) { if(confirm("Delete component?")) { await fetch(`${API_URL}/components/${id}`, { method: 'DELETE' }); fetchComponents(); }}
+        async function deleteComp(id) { 
+            if(confirm("Delete component?")) { 
+                await fetch(`${API_URL}/components/${id}`, { method: 'DELETE', headers: getHeaders() }); 
+                fetchComponents(); 
+            }
+        }
 
+        // --- UI HELPERS ---
         function showTaskModal() { taskModal.show(); }
         function showCompModal() { compModal.show(); }
         function closeModal(id) { bootstrap.Modal.getInstance(document.getElementById(id)).hide(); }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const board = document.getElementById('board');
+            sidebar.classList.toggle('show');
+            board.classList.toggle('with-sidebar');
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        }
     </script>
 </body>
 </html>
