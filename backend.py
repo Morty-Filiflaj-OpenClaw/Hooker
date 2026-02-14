@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3
@@ -18,6 +19,10 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/static/index.html")
 
 DB_FILE = "hooker.db"
 
