@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hooker - Neon Hub</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <title>Hooker v3 - Monitoring Hub</title>
     <style>
         * {
             margin: 0;
@@ -13,132 +11,150 @@
             box-sizing: border-box;
         }
 
-        body {
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
-            color: #e0e0ff;
-            font-family: 'Segoe UI', -apple-system, sans-serif;
-            overflow: hidden;
-            min-height: 100vh;
-        }
-
-        /* Neon colors */
         :root {
             --neon-cyan: #00d9ff;
-            --neon-magenta: #ff006e;
-            --neon-lime: #39ff14;
-            --neon-purple: #c100ff;
-            --neon-pink: #ff10f0;
+            --neon-magenta: #ff00ff;
+            --neon-lime: #00ff00;
+            --neon-purple: #bb00ff;
             --bg-dark: #0a0e27;
-            --bg-card: #1a1a3e;
+            --bg-secondary: #0f1535;
+            --bg-tertiary: #16213e;
+            --text-light: #e0e0e0;
+            --text-dim: #808080;
         }
 
-        /* Header */
-        header {
-            background: rgba(10, 14, 39, 0.95);
+        body {
+            background: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
             border-bottom: 2px solid var(--neon-cyan);
             padding: 16px 24px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
             height: 70px;
-            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
         }
 
-        .logo {
-            font-size: 1.4em;
-            font-weight: 800;
+        .navbar-brand {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
             letter-spacing: 2px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-tab {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1em;
+            cursor: pointer;
+            padding: 8px 16px;
+            position: relative;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .nav-tab:hover {
             color: var(--neon-cyan);
             text-shadow: 0 0 10px var(--neon-cyan);
         }
 
-        nav {
-            display: flex;
-            gap: 8px;
-        }
-
-        .nav-btn {
-            padding: 8px 16px;
-            border: 2px solid transparent;
-            background: transparent;
-            color: #b0b0ff;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-size: 0.9em;
-        }
-
-        .nav-btn:hover {
+        .nav-tab.active {
             color: var(--neon-cyan);
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
-            transform: translateY(-2px);
+            text-shadow: 0 0 20px var(--neon-cyan);
+            border-bottom: 2px solid var(--neon-cyan);
         }
 
-        .nav-btn.active {
-            color: var(--neon-cyan);
-            border-color: var(--neon-cyan);
-            background: rgba(0, 217, 255, 0.1);
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
-        }
-
-        /* Main container */
-        .container-main {
+        /* MAIN CONTAINER */
+        .main-container {
             display: flex;
             height: calc(100vh - 70px);
             overflow: hidden;
         }
 
-        /* Sidebar - Stats */
-        .sidebar {
-            width: 280px;
-            background: rgba(26, 26, 62, 0.8);
+        /* STATS PANEL */
+        .stats-panel {
+            background: var(--bg-secondary);
             border-right: 2px solid var(--neon-magenta);
-            padding: 20px;
+            border-bottom: 2px solid var(--neon-magenta);
+            padding: 16px;
+            width: 250px;
             overflow-y: auto;
-            box-shadow: 0 0 20px rgba(255, 0, 110, 0.1);
+            box-shadow: inset 0 0 20px rgba(255, 0, 255, 0.1);
         }
 
-        .sidebar-title {
+        .stats-title {
             color: var(--neon-magenta);
-            font-weight: 700;
-            margin-bottom: 16px;
+            font-size: 0.9em;
             text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 1px;
-            text-shadow: 0 0 8px var(--neon-magenta);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 10px var(--neon-magenta);
         }
 
         .stat-item {
-            background: rgba(0, 217, 255, 0.05);
-            border-left: 3px solid var(--neon-cyan);
-            padding: 12px;
-            margin-bottom: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--neon-magenta);
             border-radius: 4px;
-            transition: all 0.3s;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.1);
         }
 
         .stat-item:hover {
-            background: rgba(0, 217, 255, 0.15);
-            box-shadow: 0 0 12px rgba(0, 217, 255, 0.3);
+            background: rgba(255, 0, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
+            transform: translateX(4px);
         }
 
-        .stat-label {
-            color: #909090;
+        .stat-name {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 6px;
+        }
+
+        .stat-status {
             font-size: 0.8em;
-            text-transform: uppercase;
-            margin-bottom: 4px;
+            color: var(--text-dim);
         }
 
-        .stat-value {
-            color: var(--neon-lime);
-            font-weight: 700;
-            font-size: 1.2em;
-            text-shadow: 0 0 6px var(--neon-lime);
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: pulse 1.5s infinite;
         }
 
-        /* Content area */
+        .status-dot.success { background: var(--neon-lime); }
+        .status-dot.running { background: var(--neon-cyan); }
+        .status-dot.queued { background: var(--text-dim); }
+        .status-dot.error { background: #ff3333; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* CONTENT AREA */
         .content {
             flex: 1;
             display: flex;
@@ -146,207 +162,158 @@
             overflow: hidden;
         }
 
-        .view {
-            display: none;
+        .tab-content {
             flex: 1;
             overflow-y: auto;
             padding: 24px;
+            display: none;
+            animation: fadeIn 0.3s ease;
         }
 
-        .view.active {
-            display: flex;
-            flex-direction: column;
+        .tab-content.active {
+            display: block;
         }
 
-        /* Activity Feed */
-        .activity-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
-        .activity-item {
-            background: rgba(26, 26, 62, 0.6);
-            border: 1px solid rgba(0, 217, 255, 0.2);
-            border-left: 4px solid var(--neon-cyan);
-            padding: 14px;
-            border-radius: 8px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            animation: slideIn 0.4s ease-out;
+        /* HOME TAB */
+        .home-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 100%;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .activity-section {
+            background: var(--bg-secondary);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
         }
 
-        .activity-item:hover {
-            background: rgba(26, 26, 62, 1);
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        .board-section {
+            background: var(--bg-secondary);
+            border: 2px solid var(--neon-lime);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .activity-section .section-title {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .board-section .section-title {
+            color: var(--neon-lime);
+            text-shadow: 0 0 10px var(--neon-lime);
+        }
+
+        /* ACTIVITY LOG */
+        .activity-entry {
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 3px solid var(--neon-cyan);
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .activity-entry:hover {
+            background: rgba(0, 217, 255, 0.1);
             transform: translateX(4px);
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
         }
 
         .activity-time {
-            color: #707090;
-            font-size: 0.85em;
-            margin-bottom: 6px;
+            color: var(--text-dim);
+            font-size: 0.8em;
+            margin-bottom: 4px;
         }
 
         .activity-actor {
-            color: var(--neon-lime);
-            font-weight: 700;
+            color: var(--neon-magenta);
+            font-weight: bold;
             margin-right: 8px;
-            text-shadow: 0 0 6px var(--neon-lime);
         }
 
         .activity-desc {
-            color: #c0c0ff;
-            margin-bottom: 8px;
+            color: var(--text-light);
         }
 
         .activity-duration {
-            color: var(--neon-purple);
-            font-size: 0.85em;
-            font-weight: 600;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.75em;
-            font-weight: 700;
-            margin-left: 8px;
-        }
-
-        .status-success {
-            background: rgba(57, 255, 20, 0.2);
             color: var(--neon-lime);
+            font-size: 0.8em;
+            margin-top: 6px;
         }
 
-        .status-pending {
-            background: rgba(255, 217, 0, 0.2);
-            color: #ffd900;
-        }
-
-        .status-error {
-            background: rgba(255, 16, 240, 0.2);
-            color: var(--neon-pink);
-        }
-
-        /* Task Board */
-        .board {
+        /* TASK BOARD */
+        .board-columns {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            flex: 1;
+            gap: 12px;
+            height: 100%;
         }
 
         .column {
-            background: rgba(26, 26, 62, 0.6);
-            border: 2px solid var(--neon-purple);
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 0 15px rgba(193, 0, 255, 0.15);
-            transition: all 0.3s;
-        }
-
-        .column:hover {
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 20px rgba(0, 217, 255, 0.25);
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid var(--neon-lime);
+            border-radius: 6px;
+            padding: 12px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
         }
 
         .column-header {
-            background: linear-gradient(90deg, rgba(193, 0, 255, 0.2) 0%, rgba(0, 217, 255, 0.2) 100%);
-            padding: 14px;
-            border-bottom: 2px solid var(--neon-purple);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .column-title {
-            color: var(--neon-cyan);
-            font-weight: 700;
+            color: var(--neon-lime);
+            font-weight: bold;
+            margin-bottom: 12px;
             text-transform: uppercase;
             font-size: 0.9em;
-            letter-spacing: 1px;
-            text-shadow: 0 0 8px var(--neon-cyan);
-        }
-
-        .column-count {
-            background: var(--neon-magenta);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75em;
-            font-weight: 700;
-            box-shadow: 0 0 8px var(--neon-magenta);
-        }
-
-        .column-tasks {
-            padding: 12px;
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            text-shadow: 0 0 5px var(--neon-lime);
         }
 
         .task-card {
-            background: rgba(0, 217, 255, 0.08);
-            border: 2px solid rgba(0, 217, 255, 0.3);
-            border-radius: 8px;
-            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--neon-lime);
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
             cursor: grab;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            animation: popIn 0.4s ease-out;
-        }
-
-        @keyframes popIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
+            transition: all 0.3s ease;
         }
 
         .task-card:hover {
-            background: rgba(0, 217, 255, 0.15);
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
-            transform: translateY(-3px);
-        }
-
-        .task-card.priority-URGENT {
-            border-color: var(--neon-pink);
-        }
-
-        .task-card.priority-HIGH {
-            border-color: #ffd900;
+            background: rgba(0, 255, 0, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
         }
 
         .task-title {
-            color: #e0e0ff;
-            font-weight: 700;
-            margin-bottom: 6px;
+            color: var(--text-light);
+            font-weight: bold;
             font-size: 0.95em;
+            margin-bottom: 6px;
         }
 
         .task-assignee {
-            color: #909090;
+            color: var(--neon-cyan);
             font-size: 0.8em;
             margin-bottom: 6px;
         }
@@ -358,371 +325,421 @@
         }
 
         .tag {
-            background: rgba(193, 0, 255, 0.3);
+            background: rgba(187, 0, 255, 0.2);
             color: var(--neon-purple);
             padding: 2px 6px;
             border-radius: 3px;
-            font-size: 0.7em;
-            border: 1px solid var(--neon-purple);
+            font-size: 0.75em;
         }
 
-        /* Button */
-        .btn-add {
-            background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-lime) 100%);
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
-            margin-bottom: 16px;
-        }
-
-        .btn-add:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 25px rgba(0, 217, 255, 0.6);
-        }
-
-        /* Modal */
-        .modal-content {
-            background: linear-gradient(135deg, var(--bg-card) 0%, #2a2a4e 100%);
+        /* BUTTONS */
+        .btn {
+            background: none;
             border: 2px solid var(--neon-cyan);
-            box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+            color: var(--neon-cyan);
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
         }
 
-        .modal-header {
-            border-bottom: 2px solid var(--neon-cyan);
+        .btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-add-task {
+            border-color: var(--neon-lime);
+            color: var(--neon-lime);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .btn-add-task:hover {
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 8px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 0 40px rgba(0, 217, 255, 0.4);
         }
 
         .modal-title {
             color: var(--neon-cyan);
-            font-weight: 700;
-            text-shadow: 0 0 8px var(--neon-cyan);
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px var(--neon-cyan);
         }
 
-        .form-control, .form-select {
-            background: rgba(0, 217, 255, 0.05);
-            border: 2px solid rgba(0, 217, 255, 0.2);
-            color: #e0e0ff;
+        .form-group {
+            margin-bottom: 16px;
         }
 
-        .form-control:focus, .form-select:focus {
-            background: rgba(0, 217, 255, 0.1);
-            border-color: var(--neon-cyan);
-            color: #e0e0ff;
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        .form-label {
+            color: var(--neon-magenta);
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: block;
+            text-transform: uppercase;
+            font-size: 0.85em;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-lime) 100%);
-            border: none;
-            color: #000;
-            font-weight: 700;
-            transition: all 0.3s;
-            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--neon-cyan);
+            color: var(--text-light);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 10px rgba(0, 217, 255, 0.1);
         }
 
-        .btn-primary:hover {
-            box-shadow: 0 0 25px rgba(0, 217, 255, 0.5);
-            transform: translateY(-2px);
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--neon-magenta);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.3), inset 0 0 10px rgba(255, 0, 255, 0.1);
         }
 
-        /* Scrollbar */
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn-submit {
+            flex: 1;
+            border-color: var(--neon-lime);
+            color: var(--neon-lime);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .btn-submit:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+        }
+
+        .btn-cancel {
+            flex: 1;
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+        }
+
+        /* SCROLLBAR */
         ::-webkit-scrollbar {
             width: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(0, 217, 255, 0.05);
+            background: var(--bg-secondary);
         }
 
         ::-webkit-scrollbar-thumb {
             background: var(--neon-cyan);
             border-radius: 4px;
-            box-shadow: 0 0 8px var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
         }
 
         ::-webkit-scrollbar-thumb:hover {
             background: var(--neon-magenta);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
         }
 
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .board {
-                grid-template-columns: repeat(2, 1fr);
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .home-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-panel {
+                width: 200px;
             }
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-
-            .board {
-                grid-template-columns: 1fr;
+            .board-columns {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="logo">🪝 HOOKER</div>
-        <nav>
-            <button class="nav-btn active" onclick="switchView('home')">HOME</button>
-            <button class="nav-btn" onclick="switchView('activity')">ACTIVITY FEED</button>
-            <button class="nav-btn" onclick="switchView('board')">TASK BOARD</button>
-            <button class="nav-btn" onclick="switchView('stats')">STATS</button>
-        </nav>
-    </header>
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <div class="navbar-brand">🪝 HOOKER v3</div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('home')">HOME</button>
+            <button class="nav-tab" onclick="switchTab('activity')">ACTIVITY FEED</button>
+            <button class="nav-tab" onclick="switchTab('board')">TASK BOARD</button>
+            <button class="nav-tab" onclick="switchTab('stats')">STATS</button>
+            <button class="nav-tab" onclick="switchTab('me')">ME</button>
+        </div>
+    </div>
 
-    <!-- Main Container -->
-    <div class="container-main">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="sidebar-title">⚡ Sub-Agents</div>
-            <div id="subagentsList"></div>
-
-            <div class="sidebar-title" style="margin-top: 24px;">📊 Stats</div>
-            <div class="stat-item">
-                <div class="stat-label">Total Tasks</div>
-                <div class="stat-value" id="statTotal">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">In Progress</div>
-                <div class="stat-value" id="statProgress">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Completed</div>
-                <div class="stat-value" id="statDone">0</div>
-            </div>
+    <!-- MAIN -->
+    <div class="main-container">
+        <!-- STATS PANEL (LEFT) -->
+        <div class="stats-panel">
+            <div class="stats-title">Sub-Agents</div>
+            <div id="statsList"></div>
         </div>
 
-        <!-- Content -->
+        <!-- CONTENT -->
         <div class="content">
-            <!-- Home View -->
-            <div id="home" class="view active">
-                <h2 style="color: var(--neon-cyan); margin-bottom: 20px; text-shadow: 0 0 10px var(--neon-cyan);">Welcome to Hooker</h2>
-                <p style="color: #b0b0ff; font-size: 1.1em;">Your monitoring hub for tasks and activity. Choose a view from the menu above.</p>
-            </div>
-
-            <!-- Activity Feed View -->
-            <div id="activity" class="view">
-                <h2 style="color: var(--neon-lime); margin-bottom: 20px; text-shadow: 0 0 10px var(--neon-lime);">Activity Feed</h2>
-                <div class="activity-list" id="activityList"></div>
-            </div>
-
-            <!-- Task Board View -->
-            <div id="board" class="view">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="color: var(--neon-cyan); margin: 0; text-shadow: 0 0 10px var(--neon-cyan);">Task Board</h2>
-                    <button class="btn-add" onclick="showAddTaskModal()">+ ADD TASK</button>
+            <!-- HOME TAB -->
+            <div class="tab-content active" id="home-tab">
+                <div class="home-grid">
+                    <div class="activity-section">
+                        <div class="section-title">Activity Feed</div>
+                        <div id="activityList"></div>
+                    </div>
+                    <div class="board-section">
+                        <div class="section-title">Task Board</div>
+                        <button class="btn btn-add-task" onclick="openTaskModal()">+ ADD TASK</button>
+                        <div class="board-columns" id="boardColumns"></div>
+                    </div>
                 </div>
-                <div class="board" id="boardColumns"></div>
             </div>
 
-            <!-- Stats View -->
-            <div id="stats" class="view">
-                <h2 style="color: var(--neon-magenta); margin-bottom: 20px; text-shadow: 0 0 10px var(--neon-magenta);">Statistics</h2>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-                    <div class="stat-item" style="padding: 20px;">
-                        <div class="stat-label">Total Activities</div>
-                        <div class="stat-value" id="statActivities">0</div>
-                    </div>
-                    <div class="stat-item" style="padding: 20px;">
-                        <div class="stat-label">Success Rate</div>
-                        <div class="stat-value" id="statSuccess">0%</div>
-                    </div>
+            <!-- ACTIVITY TAB -->
+            <div class="tab-content" id="activity-tab">
+                <h2 class="section-title" style="color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan);">ACTIVITY LOG</h2>
+                <div id="activityListFull"></div>
+            </div>
+
+            <!-- BOARD TAB -->
+            <div class="tab-content" id="board-tab">
+                <h2 class="section-title" style="color: var(--neon-lime); text-shadow: 0 0 10px var(--neon-lime);">TASK BOARD</h2>
+                <button class="btn btn-add-task" onclick="openTaskModal()">+ ADD TASK</button>
+                <div class="board-columns" id="boardColumnsFull"></div>
+            </div>
+
+            <!-- STATS TAB -->
+            <div class="tab-content" id="stats-tab">
+                <h2 class="section-title" style="color: var(--neon-magenta); text-shadow: 0 0 10px var(--neon-magenta);">SUB-AGENT STATS</h2>
+                <div id="statsListFull"></div>
+            </div>
+
+            <!-- ME TAB -->
+            <div class="tab-content" id="me-tab">
+                <h2 class="section-title" style="color: var(--neon-purple); text-shadow: 0 0 10px var(--neon-purple);">ABOUT ME</h2>
+                <div style="color: var(--text-light); line-height: 1.8;">
+                    <p><strong style="color: var(--neon-cyan);">Name:</strong> Morty</p>
+                    <p><strong style="color: var(--neon-cyan);">Role:</strong> AI Assistant & Monitoring Hub</p>
+                    <p><strong style="color: var(--neon-cyan);">Capabilities:</strong> Task management, activity logging, sub-agent tracking</p>
+                    <p><strong style="color: var(--neon-cyan);">Status:</strong> <span class="status-dot success"></span>ONLINE</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add Task Modal -->
-    <div class="modal fade" id="addTaskModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Create New Task</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="text" id="taskTitle" class="form-control mb-3" placeholder="Task title" required>
-                    <textarea id="taskDesc" class="form-control mb-3" rows="3" placeholder="Description"></textarea>
-                    <div class="row mb-3">
-                        <div class="col">
-                            <select id="taskAssignee" class="form-select">
-                                <option>Morty</option>
-                                <option>Filip</option>
-                            </select>
-                        </div>
-                        <div class="col">
-                            <select id="taskPriority" class="form-select">
-                                <option>NORMAL</option>
-                                <option>HIGH</option>
-                                <option>URGENT</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="createTask()">Create</button>
-                </div>
+    <!-- ADD TASK MODAL -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <h3 class="modal-title">CREATE NEW TASK</h3>
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" id="taskTitle" class="form-input" placeholder="Task title...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="taskDesc" class="form-textarea" rows="3" placeholder="Task description..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Assignee</label>
+                <select id="taskAssignee" class="form-select">
+                    <option>Morty</option>
+                    <option>Filip</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select id="taskPriority" class="form-select">
+                    <option>NORMAL</option>
+                    <option>HIGH</option>
+                    <option>URGENT</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tags</label>
+                <input type="text" id="taskTags" class="form-input" placeholder="comma, separated, tags">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeTaskModal()">CANCEL</button>
+                <button class="btn btn-submit" onclick="createTask()">CREATE</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = "";
-        const COLUMNS = ["Inbox", "In Progress", "Review", "Done"];
-        const COLUMN_STATUS = { "Inbox": "TODO", "In Progress": "IN_PROGRESS", "Review": "BLOCKED", "Done": "DONE" };
-
-        let taskModal;
         let allTasks = [];
         let allActivity = [];
+        let allSubagents = [];
 
+        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            taskModal = new bootstrap.Modal(document.getElementById('addTaskModal'));
             fetchData();
             setInterval(fetchData, 5000);
         });
 
-        function switchView(view) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(view).classList.add('active');
-
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
+        // Fetch data
         async function fetchData() {
             try {
-                const [tasksRes, activityRes] = await Promise.all([
+                const [tasksRes, activityRes, subagentsRes] = await Promise.all([
                     fetch(`${API_URL}/tasks`),
-                    fetch(`${API_URL}/activity?limit=30`)
+                    fetch(`${API_URL}/activity?limit=50`),
+                    fetch(`${API_URL}/subagents`)
                 ]);
 
                 if (tasksRes.ok) allTasks = await tasksRes.json();
                 if (activityRes.ok) allActivity = await activityRes.json();
+                if (subagentsRes.ok) allSubagents = await subagentsRes.json();
 
-                renderBoard();
-                renderActivity();
-                updateStats();
+                render();
             } catch (e) {
                 console.error("Fetch error:", e);
             }
         }
 
-        function updateStats() {
-            document.getElementById('statTotal').textContent = allTasks.length;
-            document.getElementById('statProgress').textContent = allTasks.filter(t => t.status === 'IN_PROGRESS').length;
-            document.getElementById('statDone').textContent = allTasks.filter(t => t.status === 'DONE').length;
-            document.getElementById('statActivities').textContent = allActivity.length;
+        // Render everything
+        function render() {
+            renderStats();
+            renderActivity();
+            renderBoard();
+        }
 
-            const successCount = allActivity.filter(a => a.status === 'success').length;
-            const successRate = allActivity.length > 0 ? Math.round((successCount / allActivity.length) * 100) : 0;
-            document.getElementById('statSuccess').textContent = successRate + '%';
+        function renderStats() {
+            const html = allSubagents.slice(0, 8).map(agent => {
+                const statusMap = {
+                    'spawned': 'queued',
+                    'running': 'running',
+                    'done': 'success',
+                    'error': 'error'
+                };
+                const statusClass = statusMap[agent.status] || 'queued';
+                return `
+                    <div class="stat-item">
+                        <div class="stat-name">${agent.name}</div>
+                        <div class="stat-status">
+                            <span class="status-dot ${statusClass}"></span>
+                            ${agent.status.toUpperCase()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('statsList').innerHTML = html;
+            document.getElementById('statsListFull').innerHTML = html;
         }
 
         function renderActivity() {
-            const list = document.getElementById('activityList');
-            list.innerHTML = '';
-
-            allActivity.forEach(entry => {
+            const html = allActivity.slice(0, 20).map(entry => {
                 const date = new Date(entry.timestamp);
                 const time = date.toLocaleTimeString('cs-CZ');
-
-                const div = document.createElement('div');
-                div.className = 'activity-item';
-                div.innerHTML = `
-                    <div class="activity-time">${time}</div>
-                    <div class="activity-desc">
-                        <span class="activity-actor">${entry.actor}</span>
-                        <span>${entry.description}</span>
-                        <span class="status-badge status-${entry.status || 'pending'}">${(entry.status || 'pending').toUpperCase()}</span>
+                return `
+                    <div class="activity-entry">
+                        <div class="activity-time">${time}</div>
+                        <div class="activity-actor">${entry.actor}</div>
+                        <div class="activity-desc">${entry.description}</div>
+                        <div class="activity-duration">⏱ ${(entry.duration_ms / 1000).toFixed(2)}s</div>
                     </div>
-                    <div class="activity-duration">⏱ ${(entry.duration_ms / 1000).toFixed(2)}s</div>
                 `;
-                list.appendChild(div);
-            });
+            }).join('');
+            document.getElementById('activityList').innerHTML = html;
+            document.getElementById('activityListFull').innerHTML = html;
         }
 
         function renderBoard() {
-            const container = document.getElementById('boardColumns');
-            container.innerHTML = '';
+            const columns = ['Inbox', 'In Progress', 'Review', 'Done'];
+            const statusMap = { 'Inbox': 'TODO', 'In Progress': 'IN_PROGRESS', 'Review': 'BLOCKED', 'Done': 'DONE' };
 
-            COLUMNS.forEach(colName => {
-                const status = COLUMN_STATUS[colName];
-                const colTasks = allTasks.filter(t => t.status === status);
-
-                const col = document.createElement('div');
-                col.className = 'column';
-
-                const header = document.createElement('div');
-                header.className = 'column-header';
-                header.innerHTML = `
-                    <span class="column-title">${colName}</span>
-                    <span class="column-count">${colTasks.length}</span>
-                `;
-
-                const tasksDiv = document.createElement('div');
-                tasksDiv.className = 'column-tasks';
-                tasksDiv.dataset.status = status;
-
-                colTasks.forEach(t => {
-                    const card = document.createElement('div');
-                    card.className = `task-card priority-${t.priority}`;
-                    card.dataset.id = t.id;
-
-                    const tags = (t.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('');
-                    card.innerHTML = `
-                        <div class="task-title">${t.title}</div>
-                        <div class="task-assignee">👤 ${t.assignee}</div>
-                        <div class="task-tags">${tags}</div>
+            const html = columns.map(col => {
+                const status = statusMap[col];
+                const tasks = allTasks.filter(t => t.status === status);
+                const tasksHtml = tasks.map(task => {
+                    const tags = (task.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('');
+                    return `
+                        <div class="task-card" data-id="${task.id}">
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-assignee">👤 ${task.assignee}</div>
+                            <div class="task-tags">${tags}</div>
+                        </div>
                     `;
+                }).join('');
 
-                    tasksDiv.appendChild(card);
-                });
+                return `
+                    <div class="column">
+                        <div class="column-header">${col} (${tasks.length})</div>
+                        ${tasksHtml}
+                    </div>
+                `;
+            }).join('');
 
-                col.appendChild(header);
-                col.appendChild(tasksDiv);
-                container.appendChild(col);
-
-                new Sortable(tasksDiv, {
-                    group: 'tasks',
-                    animation: 150,
-                    onEnd: async (evt) => {
-                        if (evt.from !== evt.to) {
-                            await fetch(`${API_URL}/tasks/${evt.item.dataset.id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ status: evt.to.dataset.status })
-                            });
-                            fetchData();
-                        }
-                    }
-                });
-            });
+            document.getElementById('boardColumns').innerHTML = html;
+            document.getElementById('boardColumnsFull').innerHTML = html;
         }
 
-        function showAddTaskModal() {
-            taskModal.show();
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`${tab}-tab`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Task modal
+        function openTaskModal() {
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
         }
 
         async function createTask() {
             const title = document.getElementById('taskTitle').value;
-            if (!title) return alert('Title required');
+            if (!title) return alert("Title required");
 
             const task = {
                 title,
                 description: document.getElementById('taskDesc').value,
                 assignee: document.getElementById('taskAssignee').value,
                 priority: document.getElementById('taskPriority').value,
-                tags: []
+                tags: document.getElementById('taskTags').value.split(',').map(t => t.trim()).filter(t => t)
             };
 
             try {
@@ -732,14 +749,19 @@
                     body: JSON.stringify(task)
                 });
                 if (res.ok) {
-                    taskModal.hide();
+                    closeTaskModal();
                     document.getElementById('taskTitle').value = '';
                     fetchData();
                 }
             } catch (e) {
-                alert('Error creating task');
+                alert("Error creating task");
             }
         }
+
+        // Close modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeTaskModal();
+        });
     </script>
 </body>
 </html>
