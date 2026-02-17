@@ -1,15 +1,38 @@
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Set
 import sqlite3
 import datetime
 import json
 import secrets
+import uuid
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Hooker API", description="Systematic Task Management for Hardware Engineers")
+# WebSocket manager for real-time updates
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+    
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                pass
+
+manager = ConnectionManager()
+
+app = FastAPI(title="Hooker API", description="Systematic Task Management for Hardware Engineers + Activity Monitoring")
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +96,29 @@ def init_db():
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   url TEXT NOT NULL,
                   events TEXT,
+                  created_at TEXT)''')
+    
+    # Activity Log table (NEW)
+    c.execute('''CREATE TABLE IF NOT EXISTS activity_log
+                 (id TEXT PRIMARY KEY,
+                  timestamp TEXT NOT NULL,
+                  actor TEXT NOT NULL,
+                  action TEXT NOT NULL,
+                  status TEXT DEFAULT 'pending',
+                  description TEXT,
+                  duration_ms INTEGER DEFAULT 0,
+                  metadata TEXT,
+                  created_at TEXT)''')
+    
+    # Sub-agents tracking table (NEW)
+    c.execute('''CREATE TABLE IF NOT EXISTS subagents
+                 (id TEXT PRIMARY KEY,
+                  name TEXT NOT NULL,
+                  status TEXT DEFAULT 'spawned',
+                  started_at TEXT NOT NULL,
+                  completed_at TEXT,
+                  stdout TEXT,
+                  stderr TEXT,
                   created_at TEXT)''')
     
     conn.commit()
@@ -141,6 +187,45 @@ class Webhook(BaseModel):
     url: str
     events: List[str]
     created_at: str
+
+# Activity & Sub-agent Models (NEW)
+class ActivityEntry(BaseModel):
+    id: str
+    timestamp: str
+    actor: str
+    action: str
+    status: str
+    description: str
+    duration_ms: int
+    metadata: dict
+
+class ActivityCreate(BaseModel):
+    actor: str
+    action: str
+    description: str
+    status: str = "success"
+    duration_ms: int = 0
+    metadata: dict = {}
+
+class SubAgent(BaseModel):
+    id: str
+    name: str
+    status: str
+    started_at: str
+    completed_at: Optional[str]
+    stdout: Optional[str]
+    stderr: Optional[str]
+    created_at: str
+
+class SubAgentCreate(BaseModel):
+    name: str
+    status: str = "spawned"
+
+class SubAgentUpdate(BaseModel):
+    status: Optional[str] = None
+    completed_at: Optional[str] = None
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
 
 # --- Routes: TASKS ---
 @app.post("/tasks", response_model=Task)
@@ -339,3 +424,240 @@ def generate_api_key(user: str = Depends(verify_api_key)):
     new_key = secrets.token_urlsafe(32)
     # In production, store this in database
     return {"api_key": new_key, "note": "Store this key securely"}
+
+# --- Routes: ACTIVITY LOG (NEW) ---
+@app.post("/activity", response_model=ActivityEntry)
+def create_activity(activity: ActivityCreate, user: str = Depends(verify_api_key)):
+    """Create a new activity log entry"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    activity_id = str(uuid.uuid4())
+    now = datetime.datetime.utcnow().isoformat()
+    metadata_json = json.dumps(activity.metadata)
+    
+    c.execute("""INSERT INTO activity_log 
+                 (id, timestamp, actor, action, status, description, duration_ms, metadata, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+              (activity_id, now, activity.actor, activity.action, activity.status,
+               activity.description, activity.duration_ms, metadata_json, now))
+    
+    conn.commit()
+    conn.close()
+    
+    # Broadcast to WebSocket clients
+    import asyncio
+    asyncio.create_task(manager.broadcast({
+        "type": "activity_created",
+        "data": {
+            "id": activity_id,
+            "timestamp": now,
+            "actor": activity.actor,
+            "action": activity.action,
+            "status": activity.status,
+            "description": activity.description,
+            "duration_ms": activity.duration_ms,
+            "metadata": activity.metadata
+        }
+    }))
+    
+    return {
+        "id": activity_id,
+        "timestamp": now,
+        "actor": activity.actor,
+        "action": activity.action,
+        "status": activity.status,
+        "description": activity.description,
+        "duration_ms": activity.duration_ms,
+        "metadata": activity.metadata
+    }
+
+@app.get("/activity", response_model=List[ActivityEntry])
+def list_activity(status: Optional[str] = None, actor: Optional[str] = None, 
+                  limit: int = 100, user: str = Depends(verify_api_key)):
+    """List activity log entries with optional filters"""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    query = "SELECT * FROM activity_log WHERE 1=1"
+    params = []
+    
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    if actor:
+        query += " AND actor = ?"
+        params.append(actor)
+    
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+    
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    
+    entries = []
+    for row in rows:
+        r = dict(row)
+        try:
+            r['metadata'] = json.loads(r['metadata']) if r['metadata'] else {}
+        except:
+            r['metadata'] = {}
+        entries.append(r)
+    
+    return entries
+
+@app.get("/activity/{activity_id}", response_model=ActivityEntry)
+def get_activity(activity_id: str, user: str = Depends(verify_api_key)):
+    """Get a specific activity log entry"""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM activity_log WHERE id = ?", (activity_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    
+    r = dict(row)
+    try:
+        r['metadata'] = json.loads(r['metadata']) if r['metadata'] else {}
+    except:
+        r['metadata'] = {}
+    
+    return r
+
+# --- Routes: SUB-AGENTS (NEW) ---
+@app.post("/subagents", response_model=SubAgent)
+def create_subagent(subagent: SubAgentCreate, user: str = Depends(verify_api_key)):
+    """Register a spawned sub-agent"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    subagent_id = str(uuid.uuid4())
+    now = datetime.datetime.utcnow().isoformat()
+    
+    c.execute("""INSERT INTO subagents 
+                 (id, name, status, started_at, created_at)
+                 VALUES (?, ?, ?, ?, ?)""",
+              (subagent_id, subagent.name, subagent.status, now, now))
+    
+    conn.commit()
+    conn.close()
+    
+    # Log activity
+    asyncio.create_task(manager.broadcast({
+        "type": "subagent_spawned",
+        "data": {
+            "id": subagent_id,
+            "name": subagent.name,
+            "status": subagent.status
+        }
+    }))
+    
+    return {
+        "id": subagent_id,
+        "name": subagent.name,
+        "status": subagent.status,
+        "started_at": now,
+        "completed_at": None,
+        "stdout": None,
+        "stderr": None,
+        "created_at": now
+    }
+
+@app.get("/subagents", response_model=List[SubAgent])
+def list_subagents(status: Optional[str] = None, user: str = Depends(verify_api_key)):
+    """List all sub-agents"""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    query = "SELECT * FROM subagents WHERE 1=1"
+    params = []
+    
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    
+    query += " ORDER BY started_at DESC"
+    
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+@app.get("/subagents/{subagent_id}", response_model=SubAgent)
+def get_subagent(subagent_id: str, user: str = Depends(verify_api_key)):
+    """Get a specific sub-agent"""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM subagents WHERE id = ?", (subagent_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Sub-agent not found")
+    
+    return dict(row)
+
+@app.put("/subagents/{subagent_id}", response_model=SubAgent)
+def update_subagent(subagent_id: str, subagent: SubAgentUpdate, user: str = Depends(verify_api_key)):
+    """Update sub-agent status"""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM subagents WHERE id = ?", (subagent_id,))
+    
+    if not c.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Sub-agent not found")
+    
+    updates = []
+    params = []
+    
+    if subagent.status:
+        updates.append("status = ?")
+        params.append(subagent.status)
+    if subagent.completed_at:
+        updates.append("completed_at = ?")
+        params.append(subagent.completed_at)
+    if subagent.stdout:
+        updates.append("stdout = ?")
+        params.append(subagent.stdout)
+    if subagent.stderr:
+        updates.append("stderr = ?")
+        params.append(subagent.stderr)
+    
+    if updates:
+        params.append(subagent_id)
+        c.execute(f"UPDATE subagents SET {', '.join(updates)} WHERE id = ?", params)
+        conn.commit()
+    
+    c.execute("SELECT * FROM subagents WHERE id = ?", (subagent_id,))
+    updated = c.fetchone()
+    conn.close()
+    
+    # Broadcast update
+    asyncio.create_task(manager.broadcast({
+        "type": "subagent_updated",
+        "data": dict(updated)
+    }))
+    
+    return dict(updated)
+
+# --- Routes: WEBSOCKET (NEW) ---
+@app.websocket("/ws/activity")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time activity updates"""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, receive pings
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
