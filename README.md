@@ -1,17 +1,44 @@
-# Hooker: System Task Manager 🪝
+# Hooker: Monitoring Hub 🪝 (v3)
 
-Hooker is a lightweight, FastAPI-powered task and component management system designed for hardware engineers and autonomous agents. It provides a Trello-like Kanban interface for tasks and a simple inventory tracker for components.
+Hooker v3 is a FastAPI-powered **monitoring and task management hub** designed for hardware engineers, AI assistants, and autonomous agents. It combines real-time activity logging, sub-agent tracking, and systematic task management on a single sleek interface.
 
 ## Architecture
 
-- **Backend**: FastAPI (Python 3)
-- **Database**: SQLite (local `hooker.db`)
-- **Frontend**: Vanilla JavaScript + Bootstrap 5 (Dashboard & Kanban)
+- **Backend**: FastAPI (Python 3) + WebSocket support
+- **Database**: SQLite (local `hooker.db`) with activity log and sub-agent tracking
+- **Frontend**: Vanilla JavaScript + Bootstrap 5 (Dark mode, responsive design)
 - **Deployment**: Local web server or Docker
+
+## What's New in v3
+
+### Core Features
+- **Activity Feed**: Real-time log showing what agents/humans are doing
+  - Actor name (Morty, Filip, SubAgent-X)
+  - Task description + duration
+  - Status badges (success ✅, pending 🟡, error 🔴, slow 🟠)
+  - Sortable by timestamp and filterable by status/actor
+
+- **Sub-agent Dashboard**: Real-time status grid
+  - Agent name + status emoji (🟢 Done, 🟡 Running, ⚪ Queued, 🔴 Error)
+  - Progress % and timeline
+  - Click for detail view (logs, stdout/stderr)
+
+- **Task Board**: Kanban with 4 columns
+  - Inbox (external requests + manual tasks)
+  - In Progress
+  - Review
+  - Done
+  - Drag-drop, priority coloring, tags
+
+- **Navigation**: Home, Activity Feed (fullscreen), Task Board (fullscreen), Stats, Me
+
+- **Dark Mode**: Sleek, modern design (#0f0f0f + #00d9ff accents)
+
+- **WebSocket Support**: Real-time push updates (no polling)
 
 ## API Usage
 
-Hooker provides a RESTful API for integration with other tools (like OpenClaw).
+Hooker provides a comprehensive RESTful + WebSocket API.
 
 ### Tasks
 
@@ -22,16 +49,43 @@ Hooker provides a RESTful API for integration with other tools (like OpenClaw).
 | PUT | `/tasks/{id}` | Update task (status, description, etc.) |
 | DELETE | `/tasks/{id}` | Remove a task |
 
-**Create Task Example (JSON):**
+### Activity Log (NEW - v3)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/activity` | List activity entries (supports `?status=success&limit=50`) |
+| GET | `/activity/{id}` | Get activity entry detail |
+| POST | `/activity` | Create activity entry (internal) |
+
+**Activity Entry Schema:**
 ```json
 {
-  "title": "Fix PCB trace",
-  "description": "Short on 3V3 rail",
-  "assignee": "Morty",
-  "priority": "HIGH",
-  "tags": ["hardware", "bug"]
+  "actor": "Morty",
+  "action": "task.created",
+  "description": "Created task #42",
+  "status": "success",
+  "duration_ms": 1240,
+  "metadata": { "task_id": 42, "subagent_id": "abc123" }
 }
 ```
+
+### Sub-agents (NEW - v3)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/subagents` | List all sub-agents |
+| GET | `/subagents/{id}` | Get sub-agent detail + logs |
+| POST | `/subagents` | Register a spawned sub-agent |
+| PUT | `/subagents/{id}` | Update sub-agent status |
+
+**Sub-agent Status Lifecycle:**
+- `spawned` → `running` → `done` / `error`
+
+### WebSocket (NEW - v3)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/ws/activity` | Real-time activity log push + sub-agent updates |
 
 ### Components
 
@@ -43,18 +97,28 @@ Hooker provides a RESTful API for integration with other tools (like OpenClaw).
 
 ## Installation & Setup
 
-1. **Install Dependencies**:
-   ```bash
-   python3 -m pip install fastapi uvicorn
-   ```
+### 1. Install Dependencies
+```bash
+python3 -m pip install fastapi uvicorn python-multipart
+```
 
-2. **Run the Server**:
-   ```bash
-   uvicorn backend:app --host 0.0.0.0 --port 8000
-   ```
+### 2. Run Database Migration (v3)
+```bash
+python3 migrate_v3.py
+```
 
-3. **Access the Frontend**:
-   Open `http://localhost:8000/static/index.html` in your browser.
+### 3. Start the Server
+```bash
+# Development (auto-reload)
+uvicorn backend:app --host 0.0.0.0 --port 8000 --reload
+
+# Or use the provided script
+python3 run_app.py
+```
+
+### 4. Access the Frontend
+- **v3 (New)**: http://localhost:8000/static/index_v3.html
+- **v2 (Legacy)**: http://localhost:8000/static/index.html
 
 ## OpenClaw Integration
 
